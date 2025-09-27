@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36518.9 d17.14
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SyncAppVeeam", "SyncAppVeeam.csproj", "{980035C2-9EB0-481C-A945-0233B28D82EC}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{980035C2-9EB0-481C-A945-0233B28D82EC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{980035C2-9EB0-481C-A945-0233B28D82EC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{980035C2-9EB0-481C-A945-0233B28D82EC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{980035C2-9EB0-481C-A945-0233B28D82EC}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {A62F5AB4-1CF4-4009-AD54-208BAEC33FDA}
+	EndGlobalSection
+EndGlobal
