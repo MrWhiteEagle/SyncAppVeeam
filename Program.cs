@@ -52,9 +52,9 @@ public class Program
             throw new ArgumentException("Invalid time provided - use XXsXXmXXhXXDXXMXXY notation.");
         }
 
-        //Iterate over units, assigning each value to the DateTime
         for (int i = 0; i < units.Length; i++)
         {
+            //For each instance of a unit, add its value to the total timespan
             result += units[i] switch
             {
                 "s" => TimeSpan.FromSeconds(spans[i]),
@@ -63,7 +63,7 @@ public class Program
                 "D" => TimeSpan.FromDays(spans[i]),
                 "M" => TimeSpan.FromDays(spans[i] * 30), // <-- Approximation
                 "Y" => TimeSpan.FromDays(spans[i] * 365), // <-- Again
-                _ => TimeSpan.Zero // <-- Any other value is 
+                _ => TimeSpan.Zero // <-- Any other value (if it even manages to come through the regex) is ignored
 
             };
         }
