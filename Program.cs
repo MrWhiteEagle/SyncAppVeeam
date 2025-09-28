@@ -57,7 +57,7 @@ public class Program
         TimeSpan result = TimeSpan.Zero;
 
         // Process interval notation into arrays of time and units of time;
-        // Units - using regex, allowing nothing but smhDMY - the notation characters (I also neede to add the whitespace check since it was returning spaces and empty strings
+        // Units - using regex, allowing nothing but smhDMY - the notation characters (I also needed to add the whitespace check since it was returning spaces and empty strings
         var units = Regex.Split(interval, @"[^smhDMY]").Select(u => u).Where(u => !String.IsNullOrWhiteSpace(u) && !String.IsNullOrEmpty(u)).ToArray();
 
         // Spans - using regex again to split input into digits, that are supposed to match the units.

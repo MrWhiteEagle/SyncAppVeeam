@@ -8,22 +8,24 @@ namespace SyncAppVeeam.Models
         public string NodePath { get; set; }
         public string ParentPath { get; set; }
         public bool IsSynced { get; set; } = true;
+        public bool IsReplica { get; set; }
 
         public bool IsRootDir { get; set; }
 
         public List<INode> content = new();
 
-        public FolderNode(string Name, string Path, string parent, bool IsRootDir = false)
+        public FolderNode(string Name, string Path, string Parent, bool IsRootDir = false, bool IsReplica = false)
         {
             this.Name = Name;
             this.NodePath = Path;
-            this.ParentPath = parent;
+            this.ParentPath = Parent;
             this.IsRootDir = IsRootDir;
-            content = GetContent();
+            this.IsReplica = IsReplica;
+            content = GetContent(this.IsReplica);
         }
 
-        // Recursive function that assigns a List of entries to the folders content.
-        public List<INode> GetContent()
+        // Recursive function that assigns a List of entries to the folders content - if a folder is a replica, all of its contents are a replica too
+        public List<INode> GetContent(bool IsReplica = false)
         {
             List<INode> entries = new();
             // I was wondering if i could use SearchOptions.AllDirectories, but this gives me a list of all possible entries - and i want a tree.
@@ -37,12 +39,12 @@ namespace SyncAppVeeam.Models
                     if (Directory.Exists(node))
                     {
                         var dir = new FolderNode(Path.GetFileName(node), node, Name);
-                        dir.GetContent();
+                        dir.GetContent(this.IsReplica);
                         entries.Add(dir);
                     }
                     else if (File.Exists(node))
                     {
-                        var file = new FileNode(Path.GetFileName(node), node);
+                        var file = new FileNode(Path.GetFileName(node), node, this.IsReplica);
                         entries.Add(file);
                     }
                 }

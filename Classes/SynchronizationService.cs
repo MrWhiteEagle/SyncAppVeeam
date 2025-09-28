@@ -5,74 +5,93 @@ namespace SyncAppVeeam.Classes
     public class SynchronizationService
     {
         //This class is responsible on running the actual synchronization process, therefore it receives a list of IEntry objects that are out of sync
-        private List<FolderNode> dirs = new();
-        private List<FileNode> files = new();
+        private List<FolderNode> sourceDirs = new();
+        private List<FolderNode> destinationDirs = new();
         private string sourceRoot;
         private string destinationRoot;
-        public SynchronizationService(List<INode> tosync, string destinationRoot, string sourceRoot)
+        public SynchronizationService(List<FolderNode> source, List<FolderNode> dest, string destinationRoot, string sourceRoot)
         {
             this.destinationRoot = destinationRoot;
             this.sourceRoot = sourceRoot;
-            UpdateEntries(tosync);
+            UpdateEntries(source, dest);
         }
 
-        public void UpdateEntries(List<INode> tosync)
+        public void UpdateEntries(List<FolderNode> source, List<FolderNode> dest)
         {
-            dirs.Clear();
-            files.Clear();
-            //Segregate files and folders - folders need to be synced first to keep paths intact
-            foreach (var folder in tosync.OfType<FolderNode>())
+            sourceDirs.Clear();
+            destinationDirs.Clear();
+            // add only those nodes, which's children are not synced
+            sourceDirs.AddRange(source.Where(
+                x => x.content.Any(c => !c.IsSynced)));
+            destinationDirs.AddRange(dest.Where(
+                x => x.content.Any(c => !c.IsSynced)));
+            if (sourceDirs.Count > 0 && destinationDirs.Count > 0)
             {
-                dirs.Add(folder);
-            }
-            foreach (var file in tosync.OfType<FileNode>())
-            {
-                files.Add(file);
-            }
-        }
-
-        public void RunSync()
-        {
-            if (dirs.Count == 0 && files.Count == 0)
-            {
-                UserCLIService.CLIPrint("All good - everything in sync.");
-                return;
-            }
-            UserCLIService.CLIPrint("Synchronizing nodes:");
-            foreach (var dir in dirs)
-            {
-                UserCLIService.CLIPrint(dir.NodePath);
-                SyncNode(dir);
-            }
-            foreach (var file in files)
-            {
-                UserCLIService.CLIPrint(file.NodePath);
-                SyncNode(file);
-            }
-        }
-        //Run copy
-        public void SyncNode(INode node)
-        {
-            try
-            {
-                if (node is FolderNode)
+                foreach (var dir in sourceDirs)
                 {
-                    //When folder is marked as not synced, but exists CreateDirectory has no effect
-                    Directory.CreateDirectory(ProcessNodePath(node));
+                    UserCLIService.CLIPrint(dir.NodePath + " " + dir.IsSynced);
+                    SyncDir(dir);
                 }
+                foreach (var dir in destinationDirs)
+                {
+                    UserCLIService.CLIPrint(dir.NodePath + " " + dir.IsSynced);
+                    SyncDir(dir);
+                }
+            }
+            else
+            {
+                UserCLIService.CLIPrint("Everything in sync...");
+            }
+        }
+
+        // 
+        private void SyncDir(FolderNode node)
+        {
+            // If a node is source
+            if (!node.IsReplica)
+            {
+                // attempt to create a dir (doesnt matter if it exists or not) at the replica
+                Directory.CreateDirectory(ProcessNodePath(node));
+                UserCLIService.CLIPrint($"Creating directory {Path.GetRelativePath(sourceRoot, node.NodePath)} in destination...");
+                // then try to sync each file in that node that is not synced
+                foreach (var file in node.content.OfType<FileNode>().Where(x => !x.IsSynced))
+                {
+                    SyncFile(file);
+                }
+            }
+            // If a node is replica
+            else
+            {
+                // if it is not synced - it means it doesnt exist at all in source - delete recursively
+                if (!node.IsSynced)
+                {
+                    Directory.Delete(node.NodePath, true);
+                    UserCLIService.CLIPrint($"Deleting {node.NodePath} in destination...");
+                }
+                // if synced - try to sync all unsynced files
                 else
                 {
-                    //Copy file with override
-                    File.Copy(node.NodePath, ProcessNodePath(node), true);
+                    foreach (var file in node.content.OfType<FileNode>().Where(x => !x.IsSynced))
+                    {
+                        SyncFile(file);
+                    }
                 }
             }
-            catch (UnauthorizedAccessException ex)
+        }
+
+        private void SyncFile(FileNode node)
+        {
+            // If a file is not a replica - it needs to be copied to the destination with overwrite
+            if (!node.IsReplica)
             {
-                UserCLIService.CLIPrint($"Error while trying to sync node in: {node.NodePath}. Access denied.");
+                File.Copy(node.NodePath, ProcessNodePath(node), true);
+                UserCLIService.CLIPrint($"Copying {node.NodePath} to destination...");
             }
-            catch (Exception ex)
+            // If it is, needs to be deleted
+            else
             {
-                UserCLIService.CLIPrint($"Error while trying to sync node: {ex.Message}");
+                File.Delete(node.NodePath);
+                UserCLIService.CLIPrint($"Deleting {node.NodePath} in destination...");
             }
         }
 
@@ -80,9 +99,9 @@ namespace SyncAppVeeam.Classes
         private string ProcessNodePath(INode node)
         {
             // get relative path to node
-            var relativePath = Path.GetRelativePath(sourceRoot, node.NodePath);
+            var relativePath = Path.GetRelativePath(node.IsReplica ? destinationRoot : sourceRoot, node.NodePath);
             // add destination path to relative path
-            return Path.Combine(destinationRoot, relativePath);
+            return Path.Combine(node.IsReplica ? sourceRoot : destinationRoot, relativePath);
 
         }
     }

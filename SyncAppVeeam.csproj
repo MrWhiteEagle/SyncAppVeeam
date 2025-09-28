@@ -8,8 +8,13 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="TestEnvSync\**" />
+    <EmbeddedResource Remove="TestEnvSync\**" />
+    <None Remove="TestEnvSync\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Folder Include="TestEnvSource\TestFolder\" />
-    <Folder Include="TestEnvSync\" />
   </ItemGroup>
 
 </Project>
