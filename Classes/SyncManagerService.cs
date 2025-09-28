@@ -6,10 +6,15 @@ namespace SyncAppVeeam.Classes
     {
         private readonly FolderNode _source;
         private readonly FolderNode _sync;
+        private List<IEntry> _unsynced = new();
         private readonly TimeSpan _syncInterval;
+        private string _destinationRoot;
+        private string _sourceRoot;
 
         public SyncManagerService(string source, string sync, TimeSpan interval)
         {
+            this._destinationRoot = sync;
+            this._sourceRoot = source;
             this._source = GetFileTree(source);
             this._sync = GetFileTree(sync);
             this._syncInterval = interval;
@@ -20,6 +25,15 @@ namespace SyncAppVeeam.Classes
             }
             _source.IsSynced = CompareNode(this._source, this._sync);
             PrintFileTree();
+            Synchronize();
+        }
+
+        public void Synchronize()
+        {
+            using (var syncService = new SynchronizationService(_unsynced, _destinationRoot, _sourceRoot))
+            {
+                syncService.RunSync();
+            }
         }
 
         public FolderNode GetFileTree(string path)
@@ -45,15 +59,17 @@ namespace SyncAppVeeam.Classes
             Console.WriteLine("========================");
         }
 
-        //Big block of code incoming
+        // Big block of code incoming
         #region Recursive tree processing
-        // Starts with comparing the two nodes - the root ones.
+        // start by comparing two roots
         public bool CompareNode(IEntry source, IEntry? replica)
         {
-            // If any way that a mirror entry does not exist - marks source as out of sync and checks if its a folder to mark all other nodes inside it as out of sync
             if (replica == null)
             {
                 source.IsSynced = false;
+                _unsynced.Add(source);
+
+                // replica is null? process further to flag all as false
                 if (source is FolderNode sourcefolder)
                 {
                     foreach (var node in sourcefolder.content)
@@ -61,28 +77,44 @@ namespace SyncAppVeeam.Classes
                         node.IsSynced = CompareNode(node, null);
                     }
                 }
-                // If anything turns null it means its not in sync - therefore false
+                // anything null? then always false
                 return false;
             }
             else
             {
-                // Check if the nodes are the same type
-                if (source.GetType() != replica.GetType()) return false;
+                // same type?
+                if (source.GetType() != replica.GetType())
+                {
+                    _unsynced.Add(source);
+                    return false;
+                }
+                ;
 
-                // If nodes are files, compare them
+                // files? - compare
                 if (source is FileNode file && replica is FileNode fileSync)
                 {
-                    return CheckFile(file, fileSync);
+                    bool result = CheckFile(file, fileSync);
+                    source.IsSynced = result;
+                    if (!result) _unsynced.Add(source);
+                    return result;
                 }
 
-                // If nodes are folders - send them to CheckFolder
+                // folders? - compare content
                 if (source is FolderNode folder && replica is FolderNode folderSync)
                 {
-                    return CheckFolder(folder, folderSync);
+                    bool result = CheckFolder(folder, folderSync);
+                    source.IsSynced = result;
+                    if (!result) _unsynced.Add(source);
+                    return result;
                 }
 
-                // If their names are wrong - false, this needs to be last to keep checking other nodes in the tree.
-                if (source.Name != replica.Name) return false;
+                // same name?
+                if (source.Name != replica.Name)
+                {
+                    source.IsSynced = false;
+                    _unsynced.Add(source);
+                    return false;
+                }
             }
             return true;
         }
@@ -91,35 +123,44 @@ namespace SyncAppVeeam.Classes
             // Start by iterating over all nodes in the folder
             foreach (var node in source.content)
             {
-                // Try to find a match by name
+                // find a match by name
                 var match = tosync.content.SingleOrDefault<IEntry>(x => x.Name == node.Name);
 
-                // If a match is found - compare the two again
+                // if match then compare
                 if (match != null)
                 {
                     node.IsSynced = CompareNode(node, match);
                 }
-                // If none is found - try to compare them with null match to flag every node under it (if its a folder) as out of sync
+                // if no match - false, unless its a folder, then keep searching
                 else
                 {
                     node.IsSynced = false;
+                    _unsynced.Add(node);
                     if (node is FolderNode)
                     {
                         node.IsSynced = CompareNode(node, match);
                     }
                 }
             }
-            // Final result of folder comparison is determined by all other nodes being synced.
+            // final result of a folder comparison is determined by all its nodes being synced or not
             return source.content.All(a => a.IsSynced);
         }
 
         public bool CheckFile(FileNode source, FileNode sync)
         {
-            // Check if files have the same path(and name), and their timestamp, if any doesnt match returns false => needs correction
-            if (source.Name != sync.Name) return false;
-            // Check if source is newer - could also be != for checking if the timestamp matches overall
-            if (source.modified > sync.modified) return false;
+            // same name, or timestamp match?
+            if (source.Name != sync.Name || source.modified > sync.modified)
+            {
+                _unsynced.Add(source);
+                return false;
+            }
             return true;
+        }
+
+        private void FlagNode(IEntry node)
+        {
+            node.IsSynced = false;
+            _unsynced.Add(node);
         }
         #endregion
 

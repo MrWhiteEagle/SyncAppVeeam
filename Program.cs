@@ -30,7 +30,7 @@ public class Program
 
             }
         }
-
+        // Automatically runs sync checks on object creation;
         SyncManagerService syncService = new SyncManagerService(SourcePath, SyncPath, interval);
 
     }
