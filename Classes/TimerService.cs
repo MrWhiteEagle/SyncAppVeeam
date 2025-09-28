@@ -2,19 +2,19 @@
 
 namespace SyncAppVeeam.Classes
 {
-    public class TimerService
+    public class TimerService : IDisposable
     {
-        private TimeSpan _interval;
+        private double interval;
         private System.Timers.Timer _timer;
-        private Task _syncTask = Task.CompletedTask; //<-- temp placeholder
+        public event EventHandler? TimeIsUp;
 
         public TimerService(TimeSpan interval)
         {
-            this._interval = interval;
+            this.interval = interval.TotalMilliseconds;
             Reset();
         }
 
-        public void Reset()
+        private void Reset()
         {
             // Safeguard memory leaks, resubscribe to event
             if (_timer != null)
@@ -25,16 +25,32 @@ namespace SyncAppVeeam.Classes
             //First call on reset in the constructor reset sets the timer object.
             else
             {
-                _timer = new System.Timers.Timer(_interval);
+                _timer = new System.Timers.Timer(interval);
                 _timer.AutoReset = true;
+                // Always invoke the first time
+                this.TimeIsUp?.Invoke(this, EventArgs.Empty);
             }
             _timer.Elapsed += OnTimeElapsed;
             _timer.Start();
         }
 
-        public void OnTimeElapsed(Object? source, ElapsedEventArgs e)
+        // Usually supposed to be used as a manual sync request. - Invoke even then reset timer
+        public void ForceTick()
         {
-            Console.WriteLine("Time has elapsed at {0:HH:mm:ss.fff}", e.SignalTime);
+            this.TimeIsUp?.Invoke(this, EventArgs.Empty);
+            Reset();
+        }
+
+        private void OnTimeElapsed(Object? source, ElapsedEventArgs e)
+        {
+            UserCLIService.CLIPrint($"Running sync, next one scheduled at {DateTime.Now + TimeSpan.FromMilliseconds(interval)}");
+            this.TimeIsUp?.Invoke(this, EventArgs.Empty);
+        }
+
+        public void Dispose()
+        {
+            _timer.Stop();
+            _timer.Dispose();
         }
     }
 }

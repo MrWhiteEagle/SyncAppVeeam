@@ -4,39 +4,42 @@ namespace SyncAppVeeam.Classes
 {
     public sealed class SyncManagerService : IDisposable
     {
-        private readonly FolderNode _source;
-        private readonly FolderNode _sync;
-        private List<IEntry> _unsynced = new();
-        private readonly TimeSpan _syncInterval;
-        private string _destinationRoot;
-        private string _sourceRoot;
+        private FolderNode _sourceNode;
+        private FolderNode _destinationNode;
+        private readonly List<INode> _unsynced = new();
+        private readonly TimerService _timerService;
+        private readonly string _sourceRoot;
+        private readonly string _destinationRoot;
 
-        public SyncManagerService(string source, string sync, TimeSpan interval)
+        public SyncManagerService(string source, string destination, TimeSpan interval)
         {
-            this._destinationRoot = sync;
             this._sourceRoot = source;
-            this._source = GetFileTree(source);
-            this._sync = GetFileTree(sync);
-            this._syncInterval = interval;
-            if (interval == TimeSpan.Zero)
-            {
-                // Sync Once and immediatelly, then end
-                // Implementation
-            }
-            _source.IsSynced = CompareNode(this._source, this._sync);
-            PrintFileTree();
-            Synchronize();
+            this._destinationRoot = destination;
+
+            //Start the timer - creation = first sync
+            this._timerService = new TimerService(interval);
+            _timerService.TimeIsUp += Synchronize;
+            _timerService.ForceTick();
         }
 
-        public void Synchronize()
+        private void Synchronize(object? sender, EventArgs e)
         {
-            using (var syncService = new SynchronizationService(_unsynced, _destinationRoot, _sourceRoot))
-            {
-                syncService.RunSync();
-            }
+            UserCLIService.CLIPrint($"Sync Requested at {DateTime.Now}");
+            //Clear the list for next sweep
+            _unsynced.Clear();
+
+            //populate the nodes again
+            this._sourceNode = GetFileTree(_sourceRoot);
+            this._destinationNode = GetFileTree(_destinationRoot);
+
+            // Had to keep it that way to later print out a whole tree marking unsynced nodes
+            _sourceNode.IsSynced = CompareNode(_sourceNode, _destinationNode);
+            PrintFileTree();
+            var syncService = new SynchronizationService(_unsynced, _destinationNode.NodePath, _sourceNode.NodePath);
+            syncService.RunSync();
         }
 
-        public FolderNode GetFileTree(string path)
+        private FolderNode GetFileTree(string path)
         {
             FolderNode? result = null;
             //Check if provided path is a dir
@@ -47,27 +50,26 @@ namespace SyncAppVeeam.Classes
             return result ?? throw new InvalidOperationException($"Provided path: {path} does not exist or is not a directory");
         }
 
-        public void PrintFileTree()
+        private void PrintFileTree()
         {
-            Console.WriteLine("========================");
-            Console.WriteLine("Source Tree:");
-            Console.WriteLine("========================");
-            _source.PrintContent();
-            Console.WriteLine("========================");
-            Console.WriteLine("Sync Tree:");
-            _sync.PrintContent();
-            Console.WriteLine("========================");
+            UserCLIService.CLIPrint("========================");
+            UserCLIService.CLIPrint("Source Tree:");
+            UserCLIService.CLIPrint("========================");
+            _sourceNode.PrintContent();
+            UserCLIService.CLIPrint("========================");
+            UserCLIService.CLIPrint("Sync Tree:");
+            UserCLIService.CLIPrint("========================");
+            _destinationNode.PrintContent();
         }
 
         // Big block of code incoming
         #region Recursive tree processing
         // start by comparing two roots
-        public bool CompareNode(IEntry source, IEntry? replica)
+        private bool CompareNode(INode source, INode? replica)
         {
             if (replica == null)
             {
-                source.IsSynced = false;
-                _unsynced.Add(source);
+                FlagNode(source);
 
                 // replica is null? process further to flag all as false
                 if (source is FolderNode sourcefolder)
@@ -85,7 +87,7 @@ namespace SyncAppVeeam.Classes
                 // same type?
                 if (source.GetType() != replica.GetType())
                 {
-                    _unsynced.Add(source);
+                    FlagNode(source);
                     return false;
                 }
                 ;
@@ -94,8 +96,7 @@ namespace SyncAppVeeam.Classes
                 if (source is FileNode file && replica is FileNode fileSync)
                 {
                     bool result = CheckFile(file, fileSync);
-                    source.IsSynced = result;
-                    if (!result) _unsynced.Add(source);
+                    if (!result) FlagNode(source);
                     return result;
                 }
 
@@ -103,28 +104,26 @@ namespace SyncAppVeeam.Classes
                 if (source is FolderNode folder && replica is FolderNode folderSync)
                 {
                     bool result = CheckFolder(folder, folderSync);
-                    source.IsSynced = result;
-                    if (!result) _unsynced.Add(source);
+                    if (!result) FlagNode(source);
                     return result;
                 }
 
                 // same name?
                 if (source.Name != replica.Name)
                 {
-                    source.IsSynced = false;
-                    _unsynced.Add(source);
+                    FlagNode(source);
                     return false;
                 }
             }
             return true;
         }
-        public bool CheckFolder(FolderNode source, FolderNode tosync)
+        private bool CheckFolder(FolderNode source, FolderNode tosync)
         {
             // Start by iterating over all nodes in the folder
             foreach (var node in source.content)
             {
                 // find a match by name
-                var match = tosync.content.SingleOrDefault<IEntry>(x => x.Name == node.Name);
+                var match = tosync.content.SingleOrDefault<INode>(x => x.Name == node.Name);
 
                 // if match then compare
                 if (match != null)
@@ -146,7 +145,7 @@ namespace SyncAppVeeam.Classes
             return source.content.All(a => a.IsSynced);
         }
 
-        public bool CheckFile(FileNode source, FileNode sync)
+        private bool CheckFile(FileNode source, FileNode sync)
         {
             // same name, or timestamp match?
             if (source.Name != sync.Name || source.modified > sync.modified)
@@ -157,7 +156,7 @@ namespace SyncAppVeeam.Classes
             return true;
         }
 
-        private void FlagNode(IEntry node)
+        private void FlagNode(INode node)
         {
             node.IsSynced = false;
             _unsynced.Add(node);
@@ -166,7 +165,8 @@ namespace SyncAppVeeam.Classes
 
         public void Dispose()
         {
-            throw new NotImplementedException();
+            _timerService.TimeIsUp -= Synchronize;
+            _timerService.Dispose();
         }
     }
 }

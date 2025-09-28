@@ -3,14 +3,31 @@ using System.Text.RegularExpressions;
 
 public class Program
 {
-    static void Main()
+    static void Main(string[] args)
     {
-        string[] args = { "--source", "C:\\Users\\MrWhiteEagle\\Documents\\VSPROJ\\SyncAppVeeam\\TestEnvSource", "--path", "C:\\Users\\MrWhiteEagle\\Documents\\VSPROJ\\SyncAppVeeam\\TestEnvSync", "--interval", "10s10m48h" };
-        Setup(args);
+
+        string[] altargs = { "--source", "C:\\Users\\MrWhiteEagle\\Documents\\VSPROJ\\SyncAppVeeam\\TestEnvSource", "--path", "C:\\Users\\MrWhiteEagle\\Documents\\VSPROJ\\SyncAppVeeam\\TestEnvSync", "--interval", "30s" };
+        //Start capturing output
+        UserCLIService.Start();
+        SyncManagerService manager = Setup(args.Count() > 0 ? args : altargs);
+        UserCLIService.CLIPrint("Press q to exit...");
+        while (true)
+        {
+            if (Console.KeyAvailable)
+            {
+                var key = Console.ReadKey(true).Key;
+                if (key == ConsoleKey.Q)
+                {
+                    break;
+                }
+            }
+        }
+        manager.Dispose();
+        UserCLIService.Stop();
 
     }
 
-    static void Setup(string[] args)
+    static SyncManagerService Setup(string[] args)
     {
         string SourcePath = "/";
         string SyncPath = "/";
@@ -31,7 +48,7 @@ public class Program
             }
         }
         // Automatically runs sync checks on object creation;
-        SyncManagerService syncService = new SyncManagerService(SourcePath, SyncPath, interval);
+        return new SyncManagerService(SourcePath, SyncPath, interval);
 
     }
 

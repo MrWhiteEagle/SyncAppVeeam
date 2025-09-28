@@ -1,6 +1,8 @@
-﻿namespace SyncAppVeeam.Models
+﻿using SyncAppVeeam.Classes;
+
+namespace SyncAppVeeam.Models
 {
-    public class FolderNode : IEntry
+    public class FolderNode : INode
     {
         public string Name { get; set; }
         public string NodePath { get; set; }
@@ -9,7 +11,7 @@
 
         public bool IsRootDir { get; set; }
 
-        public List<IEntry> content = new();
+        public List<INode> content = new();
 
         public FolderNode(string Name, string Path, string parent, bool IsRootDir = false)
         {
@@ -21,9 +23,9 @@
         }
 
         // Recursive function that assigns a List of entries to the folders content.
-        public List<IEntry> GetContent()
+        public List<INode> GetContent()
         {
-            List<IEntry> entries = new();
+            List<INode> entries = new();
             // I was wondering if i could use SearchOptions.AllDirectories, but this gives me a list of all possible entries - and i want a tree.
             var nodes = Directory.GetFileSystemEntries(NodePath);
             foreach (var node in nodes)
@@ -59,7 +61,7 @@
         // Using indent like this is a cluncky solution but i couldnt come up with a better one
         public void PrintContent(string indent = "")
         {
-            Console.WriteLine($"{indent}{ParentPath}\\{this.Name} - {this.IsSynced}");
+            UserCLIService.CLIPrint($"{indent}\\{this.Name} - {this.IsSynced}");
             foreach (var entry in content)
             {
                 entry.PrintContent(indent + "\t");

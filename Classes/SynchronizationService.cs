@@ -2,22 +2,21 @@
 
 namespace SyncAppVeeam.Classes
 {
-    public class SynchronizationService : IDisposable
+    public class SynchronizationService
     {
         //This class is responsible on running the actual synchronization process, therefore it receives a list of IEntry objects that are out of sync
         private List<FolderNode> dirs = new();
         private List<FileNode> files = new();
         private string sourceRoot;
         private string destinationRoot;
-        private TimerService timerService;
-        public SynchronizationService(List<IEntry> tosync, string destinationRoot, string sourceRoot)
+        public SynchronizationService(List<INode> tosync, string destinationRoot, string sourceRoot)
         {
             this.destinationRoot = destinationRoot;
             this.sourceRoot = sourceRoot;
             UpdateEntries(tosync);
         }
 
-        public void UpdateEntries(List<IEntry> tosync)
+        public void UpdateEntries(List<INode> tosync)
         {
             dirs.Clear();
             files.Clear();
@@ -34,49 +33,56 @@ namespace SyncAppVeeam.Classes
 
         public void RunSync()
         {
-            Console.WriteLine("Synchronizing nodes:");
+            if (dirs.Count == 0 && files.Count == 0)
+            {
+                UserCLIService.CLIPrint("All good - everything in sync.");
+                return;
+            }
+            UserCLIService.CLIPrint("Synchronizing nodes:");
             foreach (var dir in dirs)
             {
-                Console.WriteLine(dir.NodePath);
-                CopyPasteNode(dir);
+                UserCLIService.CLIPrint(dir.NodePath);
+                SyncNode(dir);
             }
             foreach (var file in files)
             {
-                Console.WriteLine(file.NodePath);
-                CopyPasteNode(file);
+                UserCLIService.CLIPrint(file.NodePath);
+                SyncNode(file);
             }
         }
         //Run copy
-        public void CopyPasteNode(IEntry node)
+        public void SyncNode(INode node)
         {
-            if (node is FolderNode)
+            try
             {
-                //When folder is marked as not synced, but exists CreateDirectory has no effect
-                Directory.CreateDirectory(ProcessNodePath(node));
+                if (node is FolderNode)
+                {
+                    //When folder is marked as not synced, but exists CreateDirectory has no effect
+                    Directory.CreateDirectory(ProcessNodePath(node));
+                }
+                else
+                {
+                    //Copy file with override
+                    File.Copy(node.NodePath, ProcessNodePath(node), true);
+                }
             }
-            else
+            catch (UnauthorizedAccessException ex)
             {
-                //Copy file with override
-                File.Copy(node.NodePath, ProcessNodePath(node), true);
+                UserCLIService.CLIPrint($"Error while trying to sync node in: {node.NodePath}. Access denied.");
+            }
+            catch (Exception ex)
+            {
+                UserCLIService.CLIPrint($"Error while trying to sync node: {ex.Message}");
             }
         }
+
         // Returns a correct new path in destination by taking the source path and swapping it with the destination
-        private string ProcessNodePath(IEntry node)
+        private string ProcessNodePath(INode node)
         {
             // get relative path to node
             var relativePath = Path.GetRelativePath(sourceRoot, node.NodePath);
             // add destination path to relative path
             return Path.Combine(destinationRoot, relativePath);
-
-        }
-
-        public void SyncNode()
-        {
-
-        }
-
-        public void Dispose()
-        {
 
         }
     }

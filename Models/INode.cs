@@ -1,6 +1,6 @@
 ﻿namespace SyncAppVeeam.Models
 {
-    public interface IEntry
+    public interface INode
     {
         public string Name { get; set; }
         public string NodePath { get; set; }

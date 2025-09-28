@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <Folder Include="TestEnvSource\TestFolder\" />
+    <Folder Include="TestEnvSync\" />
   </ItemGroup>
 
 </Project>

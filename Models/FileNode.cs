@@ -1,6 +1,8 @@
-﻿namespace SyncAppVeeam.Models
+﻿using SyncAppVeeam.Classes;
+
+namespace SyncAppVeeam.Models
 {
-    public class FileNode : IEntry
+    public class FileNode : INode
     {
         public string Name { get; set; }
         public string NodePath { get; set; }
@@ -18,8 +20,7 @@
         public void PrintContent(string indent = "")
         {
 
-            Console.Write($"{indent}{this.Name} - {IsSynced}");
-            Console.WriteLine($"\tModified: {modified.ToString()}");
+            UserCLIService.CLIPrint($"{indent}{this.Name} - {IsSynced}\tModified: {modified.ToString()}");
         }
     }
 }
