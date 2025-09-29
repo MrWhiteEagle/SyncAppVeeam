@@ -36,6 +36,7 @@ namespace SyncAppVeeam.Classes
         /// <param name="e"></param>
         private void Synchronize(object? sender, EventArgs e)
         {
+            _timerService.Lock();
             UserCLIService.CLIPrint($"Sync Requested at {DateTime.Now}");
 
             //Create file trees, mark replicas
@@ -72,6 +73,7 @@ namespace SyncAppVeeam.Classes
 
             // Log results
             UserCLIService.LogToFile();
+            _timerService.Release();
         }
 
         private FolderNode GetFileTree(string path, bool replica = false)
@@ -81,12 +83,18 @@ namespace SyncAppVeeam.Classes
             //Check if provided path is a dir
             if (Directory.Exists(path))
             {
-                result = new FolderNode(Path.GetFileName(path), path, true, replica);
+                result = new FolderNode(path, true, replica);
             }
 
             //return result, if not a directory - throw
-            //we cant continue here, becuase the paths are provided at start and not changed - therefore throw and not try/catch
-            return result ?? throw new DirectoryNotFoundException($"Provided path: {path} does not exist or is not a directory");
+            //we cant continue here, because the paths are provided at start and not changed - therefore throw and not try/catch
+            if (result == null)
+            {
+                this.Dispose();
+                ExceptionHandler.HandleException(new DirectoryNotFoundException($"Provided path: {path} does not exist or is not a directory"), "", true);
+            }
+            //Null checked above ^^^
+            return result!;
         }
 
         List<FolderNode> GetDirectories(FolderNode root)
@@ -134,22 +142,32 @@ namespace SyncAppVeeam.Classes
             //Check if file exists in counterpart - if yes leave it, else flag
             var relativePath = Path.GetRelativePath(file.IsReplica ? _destinationNode.NodePath : _sourceNode.NodePath, file.NodePath);
             var counterPath = Path.Combine(file.IsReplica ? _sourceNode.NodePath : _destinationNode.NodePath, relativePath);
-            //I'm going to leave hash check but personally - I think timestamp check is enough. Especially with large files, it would be more performant
-            //Hash check could be useful if someone deliberately set the timestamp on a file, but as well we could have the same name files with different content and same timestamp - although achieving that is hard
+
+            //First check timestamp - if it matches, try to check size - if it matches then try to use MD5
             if (File.Exists(counterPath))
             {
-                using (var md = MD5.Create())
-                using (var stream = File.OpenRead(counterPath))
+
+                if (file.modified > File.GetLastWriteTime(counterPath))
                 {
-                    if (!md.ComputeHash(stream).SequenceEqual(file.GetHash()))
+                    file.IsSynced = false;
+                    return;
+                }
+                else if (file.GetSize() != new FileInfo(counterPath).Length)
+                {
+                    file.IsSynced = false;
+                    return;
+                }
+                else
+                {
+                    using (var md = MD5.Create())
+                    using (var stream = File.OpenRead(counterPath))
                     {
-                        file.IsSynced = false;
+                        if (!md.ComputeHash(stream).SequenceEqual(file.GetHash()))
+                        {
+                            file.IsSynced = false;
+                        }
                     }
                 }
-                //if (file.modified > File.GetLastWriteTime(counterPath))
-                //{
-                //    file.IsSynced = false;
-                //}
             }
             else
             {

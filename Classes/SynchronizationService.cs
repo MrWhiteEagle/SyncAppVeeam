@@ -64,12 +64,19 @@ namespace SyncAppVeeam.Classes
             if (!node.IsReplica)
             {
                 // attempt to create a dir (doesnt matter if it exists or not) at the replica
-                Directory.CreateDirectory(ProcessNodePath(node));
-                UserCLIService.CLIPrint($"Creating directory {Path.GetRelativePath(sourceRoot, node.NodePath)} in destination...");
-                // then try to sync each file in that node that is not synced
-                foreach (var file in node.content.OfType<FileNode>().Where(x => !x.IsSynced))
+                try
                 {
-                    SyncFile(file);
+                    Directory.CreateDirectory(ProcessNodePath(node));
+                    UserCLIService.CLIPrint($"Creating directory {Path.GetRelativePath(sourceRoot, node.NodePath)} in destination...");
+                    // then try to sync each file in that node that is not synced
+                    foreach (var file in node.content.OfType<FileNode>().Where(x => !x.IsSynced))
+                    {
+                        SyncFile(file);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    ExceptionHandler.HandleException(ex, $"Cannot create directory {node.NodePath}");
                 }
             }
             // if replica
@@ -78,8 +85,16 @@ namespace SyncAppVeeam.Classes
                 // if not synced - nonexistent in source - delete
                 if (!node.IsSynced)
                 {
-                    Directory.Delete(node.NodePath, true);
-                    UserCLIService.CLIPrint($"Deleting {node.NodePath} in destination...");
+                    try
+                    {
+                        Directory.Delete(node.NodePath, true);
+                        UserCLIService.CLIPrint($"Deleting {node.NodePath} in destination...");
+
+                    }
+                    catch (Exception ex)
+                    {
+                        ExceptionHandler.HandleException(ex, $"Cannot delete directory {node.NodePath}");
+                    }
                 }
                 // if synced - sync files inside
                 else
@@ -97,14 +112,29 @@ namespace SyncAppVeeam.Classes
             // if source - copy
             if (!node.IsReplica)
             {
-                File.Copy(node.NodePath, ProcessNodePath(node), true);
-                UserCLIService.CLIPrint($"Copying {node.NodePath} to destination...");
+                try
+                {
+                    File.Copy(node.NodePath, ProcessNodePath(node), true);
+                    UserCLIService.CLIPrint($"Copying {node.NodePath} to destination...", UserCLIService.InfoType.COPY);
+                }
+                catch (Exception ex)
+                {
+                    ExceptionHandler.HandleException(ex, $"Cannot copy {node.NodePath}");
+                }
             }
             // if replica - delete
             else
             {
-                File.Delete(node.NodePath);
-                UserCLIService.CLIPrint($"Deleting {node.NodePath} in destination...");
+                try
+                {
+                    File.Delete(node.NodePath);
+                    UserCLIService.CLIPrint($"Deleting {node.NodePath} in destination...", UserCLIService.InfoType.DELETE);
+
+                }
+                catch (Exception ex)
+                {
+                    ExceptionHandler.HandleException(ex, $"Cannot delete {node.NodePath}");
+                }
             }
         }
 

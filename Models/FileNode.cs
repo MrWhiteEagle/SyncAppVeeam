@@ -11,9 +11,9 @@ namespace SyncAppVeeam.Models
         public bool IsSynced { get; set; } = true;
         public bool IsReplica { get; set; }
 
-        public FileNode(string Name, string Path, bool IsReplica = false)
+        public FileNode(string Path, bool IsReplica = false)
         {
-            this.Name = Name;
+            this.Name = System.IO.Path.GetFileName(Path);
             this.NodePath = Path;
             this.IsReplica = IsReplica;
             modified = File.GetLastWriteTime(NodePath);
@@ -26,6 +26,11 @@ namespace SyncAppVeeam.Models
             {
                 return md.ComputeHash(stream);
             }
+        }
+
+        public long GetSize()
+        {
+            return new FileInfo(NodePath).Length;
         }
 
         public void PrintContent(string indent = "")

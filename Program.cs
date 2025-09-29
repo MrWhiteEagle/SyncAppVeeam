@@ -17,7 +17,7 @@ public class Program
         UserCLIService.Start();
 
         //Start setup of manager
-        SyncManagerService? manager = Setup(args.Count() != 0 ? args : altargs);
+        SyncManagerService manager = Setup(args.Count() != 0 ? args : altargs);
 
         //If manager is not null, start loop, else - stop output and log to file in default location
         if (manager != null)
@@ -38,12 +38,12 @@ public class Program
         UserCLIService.Stop();
     }
 
-    static SyncManagerService? Setup(string[] args)
+    static SyncManagerService Setup(string[] args)
     {
         if (args.Count() != 8)
         {
-            UserCLIService.CLIPrint("Invalid arguments provided. Try --source <sourcepath> --path <destinationpath> --log <logdirectory> --interval <XXsXXmXXhXXDXXMXXY>");
-            return null;
+            //throw - cannot process arguments
+            ExceptionHandler.HandleException(new ArgumentException(), "Invalid arguments provided. Try --source <sourcepath> --path <destinationpath> --log <logdirectory> --interval <XXsXXmXXhXXDXXMXXY>", true);
         }
 
         string SourcePath = "/";
@@ -87,7 +87,7 @@ public class Program
         // If number of time spans is not equal to number of units, inform about error - use default time
         if (units.Length != spans.Length)
         {
-            UserCLIService.CLIPrint("Invalid time provided - use XXsXXmXXhXXDXXMXXY notation.");
+            UserCLIService.CLIPrint("Invalid time provided - use XXsXXmXXhXXDXXMXXY notation.", UserCLIService.InfoType.ERROR);
             UserCLIService.CLIPrint("Using default time - 1hour");
             return result + TimeSpan.FromHours(1);
         }

@@ -10,6 +10,7 @@ namespace SyncAppVeeam.Classes
         private double interval;
         private System.Timers.Timer _timer;
         public event EventHandler? TimeIsUp;
+        private bool isRunning = false;
 
         public TimerService(TimeSpan interval)
         {
@@ -30,8 +31,6 @@ namespace SyncAppVeeam.Classes
             {
                 _timer = new System.Timers.Timer(interval);
                 _timer.AutoReset = true;
-                // Always invoke the first time
-                this.TimeIsUp?.Invoke(this, EventArgs.Empty);
             }
             _timer.Elapsed += OnTimeElapsed;
             _timer.Start();
@@ -40,14 +39,34 @@ namespace SyncAppVeeam.Classes
         // Manual request
         public void ForceTick()
         {
-            this.TimeIsUp?.Invoke(this, EventArgs.Empty);
+            if (!isRunning)
+            {
+                this.TimeIsUp?.Invoke(this, EventArgs.Empty);
+            }
             Reset();
         }
 
         private void OnTimeElapsed(Object? source, ElapsedEventArgs e)
         {
-            UserCLIService.CLIPrint($"Running sync, next one scheduled at {DateTime.Now + TimeSpan.FromMilliseconds(interval)}");
-            this.TimeIsUp?.Invoke(this, EventArgs.Empty);
+            if (!isRunning)
+            {
+                UserCLIService.CLIPrint($"Running sync, next one scheduled at {DateTime.Now + TimeSpan.FromMilliseconds(interval)}");
+                this.TimeIsUp?.Invoke(this, EventArgs.Empty);
+            }
+            else
+            {
+                UserCLIService.CLIPrint($"Tried to run sync, but one is already in progress... Skipping...");
+            }
+        }
+
+        public void Lock()
+        {
+            this.isRunning = true;
+        }
+
+        public void Release()
+        {
+            this.isRunning = false;
         }
 
         public void Dispose()

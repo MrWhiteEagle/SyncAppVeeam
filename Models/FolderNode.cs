@@ -12,9 +12,9 @@ namespace SyncAppVeeam.Models
 
         public List<INode> content = new();
 
-        public FolderNode(string Name, string Path, bool IsRootDir = false, bool IsReplica = false)
+        public FolderNode(string Path, bool IsRootDir = false, bool IsReplica = false)
         {
-            this.Name = Name;
+            this.Name = System.IO.Path.GetFileName(Path);
             this.NodePath = Path;
             this.IsRootDir = IsRootDir;
             this.IsReplica = IsReplica;
@@ -33,19 +33,19 @@ namespace SyncAppVeeam.Models
                     // If its a folder - its constructor recursively fetches its content, if its a file, creaste a filenode and add to the folders content
                     if (Directory.Exists(node))
                     {
-                        var dir = new FolderNode(Path.GetFileName(node), node);
+                        var dir = new FolderNode(node);
                         entries.Add(dir);
                     }
                     else if (File.Exists(node))
                     {
-                        var file = new FileNode(Path.GetFileName(node), node, this.IsReplica);
+                        var file = new FileNode(node, this.IsReplica);
                         entries.Add(file);
                     }
                 }
                 // safeguard on directory access
                 catch (UnauthorizedAccessException ex)
                 {
-                    UserCLIService.CLIPrint($"Access to path: {NodePath} was denied. {ex.Message}");
+                    UserCLIService.CLIPrint($"Access to path: {NodePath} was denied. {ex.Message}", UserCLIService.InfoType.ERROR);
                 }
             }
 

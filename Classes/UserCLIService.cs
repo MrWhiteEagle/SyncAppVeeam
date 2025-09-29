@@ -4,6 +4,14 @@ namespace SyncAppVeeam.Classes
 {
     public static class UserCLIService
     {
+        public enum InfoType
+        {
+            INFO,
+            ERROR,
+            CREATE,
+            DELETE,
+            COPY
+        }
         private static StringBuilder logbuilder = new StringBuilder();
         // Automatically set the output file on directory set
         private static string logFilePath = "";
@@ -30,10 +38,10 @@ namespace SyncAppVeeam.Classes
             LogToFile();
         }
 
-        public static void CLIPrint(string message)
+        public static void CLIPrint(string message, InfoType type = InfoType.INFO)
         {
-            logbuilder.AppendLine(message);
-            Console.WriteLine(message);
+            logbuilder.AppendLine($"[{type.ToString()}]{message}");
+            Console.WriteLine($"[{type.ToString()}]{message}");
         }
 
         public static void LogToFile()
