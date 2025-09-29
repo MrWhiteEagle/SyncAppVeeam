@@ -1,4 +1,5 @@
 ﻿using SyncAppVeeam.Classes;
+using System.Security.Cryptography;
 
 namespace SyncAppVeeam.Models
 {
@@ -15,14 +16,21 @@ namespace SyncAppVeeam.Models
             this.Name = Name;
             this.NodePath = Path;
             this.IsReplica = IsReplica;
-            //Geting last write time to file to check changes later in comparison.
             modified = File.GetLastWriteTime(NodePath);
+        }
+
+        public byte[] GetHash()
+        {
+            using (var md = MD5.Create())
+            using (var stream = File.OpenRead(NodePath))
+            {
+                return md.ComputeHash(stream);
+            }
         }
 
         public void PrintContent(string indent = "")
         {
-
-            UserCLIService.CLIPrint($"{indent}{this.Name} - {IsSynced}\tModified: {modified.ToString()}");
+            UserCLIService.CLIPrint($"{indent}{this.Name} - {IsSynced}");
         }
     }
 }

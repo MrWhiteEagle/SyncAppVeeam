@@ -2,9 +2,12 @@
 
 namespace SyncAppVeeam.Classes
 {
+    /// <summary>
+    /// Responsible for actual synchronization of directories, receives replica and source dirs to evaluate and act.
+    /// First creation always results in sync
+    /// </summary>
     public class SynchronizationService
     {
-        //This class is responsible on running the actual synchronization process, therefore it receives a list of IEntry objects that are out of sync
         private List<FolderNode> sourceDirs = new();
         private List<FolderNode> destinationDirs = new();
         private string sourceRoot;
@@ -16,23 +19,32 @@ namespace SyncAppVeeam.Classes
             UpdateEntries(source, dest);
         }
 
+        /// <summary>
+        /// Updates lists with directories, filters out synchronized nodes, runs sync
+        /// </summary>
+        /// <param name="source"></param>
+        /// <param name="dest"></param>
         public void UpdateEntries(List<FolderNode> source, List<FolderNode> dest)
         {
             sourceDirs.Clear();
             destinationDirs.Clear();
+
             // add only those nodes, which's children are not synced
             sourceDirs.AddRange(source.Where(
                 x => x.content.Any(c => !c.IsSynced)));
+
             destinationDirs.AddRange(dest.Where(
                 x => x.content.Any(c => !c.IsSynced)));
-            if (sourceDirs.Count > 0 && destinationDirs.Count > 0)
+
+            if (sourceDirs.Count == 0 || destinationDirs.Count == 0)
             {
-                foreach (var dir in sourceDirs)
+                //Sync destination first - delete unmatched entries to avoid conflicts with same name files
+                foreach (var dir in destinationDirs)
                 {
                     UserCLIService.CLIPrint(dir.NodePath + " " + dir.IsSynced);
                     SyncDir(dir);
                 }
-                foreach (var dir in destinationDirs)
+                foreach (var dir in sourceDirs)
                 {
                     UserCLIService.CLIPrint(dir.NodePath + " " + dir.IsSynced);
                     SyncDir(dir);
@@ -47,7 +59,7 @@ namespace SyncAppVeeam.Classes
         // 
         private void SyncDir(FolderNode node)
         {
-            // If a node is source
+            // if source
             if (!node.IsReplica)
             {
                 // attempt to create a dir (doesnt matter if it exists or not) at the replica
@@ -59,16 +71,16 @@ namespace SyncAppVeeam.Classes
                     SyncFile(file);
                 }
             }
-            // If a node is replica
+            // if replica
             else
             {
-                // if it is not synced - it means it doesnt exist at all in source - delete recursively
+                // if not synced - nonexistent in source - delete
                 if (!node.IsSynced)
                 {
                     Directory.Delete(node.NodePath, true);
                     UserCLIService.CLIPrint($"Deleting {node.NodePath} in destination...");
                 }
-                // if synced - try to sync all unsynced files
+                // if synced - sync files inside
                 else
                 {
                     foreach (var file in node.content.OfType<FileNode>().Where(x => !x.IsSynced))
@@ -81,13 +93,13 @@ namespace SyncAppVeeam.Classes
 
         private void SyncFile(FileNode node)
         {
-            // If a file is not a replica - it needs to be copied to the destination with overwrite
+            // if source - copy
             if (!node.IsReplica)
             {
                 File.Copy(node.NodePath, ProcessNodePath(node), true);
                 UserCLIService.CLIPrint($"Copying {node.NodePath} to destination...");
             }
-            // If it is, needs to be deleted
+            // if replica - delete
             else
             {
                 File.Delete(node.NodePath);
@@ -95,7 +107,11 @@ namespace SyncAppVeeam.Classes
             }
         }
 
-        // Returns a correct new path in destination by taking the source path and swapping it with the destination
+        /// <summary>
+        /// Returns node's supposed counterpart path.
+        /// </summary>
+        /// <param name="node"></param>
+        /// <returns></returns>
         private string ProcessNodePath(INode node)
         {
             // get relative path to node

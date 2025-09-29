@@ -6,40 +6,34 @@ namespace SyncAppVeeam.Models
     {
         public string Name { get; set; }
         public string NodePath { get; set; }
-        public string ParentPath { get; set; }
         public bool IsSynced { get; set; } = true;
         public bool IsReplica { get; set; }
-
         public bool IsRootDir { get; set; }
 
         public List<INode> content = new();
 
-        public FolderNode(string Name, string Path, string Parent, bool IsRootDir = false, bool IsReplica = false)
+        public FolderNode(string Name, string Path, bool IsRootDir = false, bool IsReplica = false)
         {
             this.Name = Name;
             this.NodePath = Path;
-            this.ParentPath = Parent;
             this.IsRootDir = IsRootDir;
             this.IsReplica = IsReplica;
             content = GetContent(this.IsReplica);
         }
 
-        // Recursive function that assigns a List of entries to the folders content - if a folder is a replica, all of its contents are a replica too
         public List<INode> GetContent(bool IsReplica = false)
         {
             List<INode> entries = new();
-            // I was wondering if i could use SearchOptions.AllDirectories, but this gives me a list of all possible entries - and i want a tree.
             var nodes = Directory.GetFileSystemEntries(NodePath);
             foreach (var node in nodes)
             {
                 try
                 {
                     // Get all nodes for the folder;
-                    // If its a folder - recursively call GetContent(), if its a file, creaste a filenode and add to the folders content
+                    // If its a folder - its constructor recursively fetches its content, if its a file, creaste a filenode and add to the folders content
                     if (Directory.Exists(node))
                     {
-                        var dir = new FolderNode(Path.GetFileName(node), node, Name);
-                        dir.GetContent(this.IsReplica);
+                        var dir = new FolderNode(Path.GetFileName(node), node);
                         entries.Add(dir);
                     }
                     else if (File.Exists(node))
@@ -48,16 +42,15 @@ namespace SyncAppVeeam.Models
                         entries.Add(file);
                     }
                 }
-                // If we cant reach a folder or file its likely access problem.
+                // safeguard on directory access
                 catch (UnauthorizedAccessException ex)
                 {
-                    Console.WriteLine($"Access to path: {NodePath} was denied. {ex.Message}");
+                    UserCLIService.CLIPrint($"Access to path: {NodePath} was denied. {ex.Message}");
                 }
             }
 
-            //Sort the content so it shows files first - then folders and its content
-            entries = entries.OrderBy(x => x is FolderNode).ThenBy(x => x.Name).ToList();
-            return entries;
+            // files first
+            return entries.OrderBy(x => x is FolderNode).ThenBy(x => x.Name).ToList();
         }
 
         // Using indent like this is a cluncky solution but i couldnt come up with a better one

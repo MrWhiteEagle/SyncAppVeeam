@@ -2,6 +2,9 @@
 
 namespace SyncAppVeeam.Classes
 {
+    /// <summary>
+    /// Responsible for measuring time between sync sequences, can be forced by calling ForceTick
+    /// </summary>
     public class TimerService : IDisposable
     {
         private double interval;
@@ -22,7 +25,7 @@ namespace SyncAppVeeam.Classes
                 _timer.Stop();
                 _timer.Elapsed -= OnTimeElapsed;
             }
-            //First call on reset in the constructor reset sets the timer object.
+            // First call on reset in the constructor creates the timer object.
             else
             {
                 _timer = new System.Timers.Timer(interval);
@@ -34,7 +37,7 @@ namespace SyncAppVeeam.Classes
             _timer.Start();
         }
 
-        // Usually supposed to be used as a manual sync request. - Invoke even then reset timer
+        // Manual request
         public void ForceTick()
         {
             this.TimeIsUp?.Invoke(this, EventArgs.Empty);
@@ -50,6 +53,7 @@ namespace SyncAppVeeam.Classes
         public void Dispose()
         {
             _timer.Stop();
+            _timer.Elapsed -= OnTimeElapsed;
             _timer.Dispose();
         }
     }

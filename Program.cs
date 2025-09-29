@@ -5,33 +5,51 @@ public class Program
 {
     static void Main(string[] args)
     {
+        // Sample arguments
+        string[] altargs = {
+            "--source", "C:\\Users\\MrWhiteEagle\\Documents\\VSPROJ\\SyncAppVeeam\\TestEnvSource",
+            "--path", "C:\\Users\\MrWhiteEagle\\Documents\\VSPROJ\\SyncAppVeeam\\TestEnvSync",
+            "--interval", "30s",
+            "--log", ".\\SyncLog"
+        };
 
-        string[] altargs = { "--source", "C:\\Users\\MrWhiteEagle\\Documents\\VSPROJ\\SyncAppVeeam\\TestEnvSource", "--path", "C:\\Users\\MrWhiteEagle\\Documents\\VSPROJ\\SyncAppVeeam\\TestEnvSync", "--interval", "30s" };
-        //Start capturing output
+        // Start capturing output
         UserCLIService.Start();
-        SyncManagerService manager = Setup(args.Count() > 0 ? args : altargs);
-        UserCLIService.CLIPrint("Press q to exit...");
-        while (true)
+
+        //Start setup of manager
+        SyncManagerService? manager = Setup(args.Count() != 0 ? args : altargs);
+
+        //If manager is not null, start loop, else - stop output and log to file in default location
+        if (manager != null)
         {
-            if (Console.KeyAvailable)
+            while (true)
             {
-                var key = Console.ReadKey(true).Key;
-                if (key == ConsoleKey.Q)
+                if (Console.KeyAvailable)
                 {
-                    break;
+                    var key = Console.ReadKey(true).Key;
+                    if (key == ConsoleKey.Q)
+                    {
+                        break;
+                    }
                 }
             }
+            manager.Dispose();
         }
-        manager.Dispose();
         UserCLIService.Stop();
-
     }
 
-    static SyncManagerService Setup(string[] args)
+    static SyncManagerService? Setup(string[] args)
     {
+        if (args.Count() != 8)
+        {
+            UserCLIService.CLIPrint("Invalid arguments provided. Try --source <sourcepath> --path <destinationpath> --log <logdirectory> --interval <XXsXXmXXhXXDXXMXXY>");
+            return null;
+        }
+
         string SourcePath = "/";
         string SyncPath = "/";
         TimeSpan interval = TimeSpan.Zero;
+        string logPath = "/";
 
         //checking every second argument to keep "--" notation.
         for (int i = 0; i < args.Length; i += 2)
@@ -44,9 +62,12 @@ public class Program
                     SyncPath = args[i + 1]; break;
                 case "--interval":
                     interval = ParseInterval(args[i + 1]); break;
+                case "--log":
+                    logPath = args[i + 1]; break;
 
             }
         }
+        UserCLIService.logPath = logPath;
         // Automatically runs sync checks on object creation;
         return new SyncManagerService(SourcePath, SyncPath, interval);
 
@@ -63,10 +84,12 @@ public class Program
         // Spans - using regex again to split input into digits, that are supposed to match the units.
         var spans = Regex.Matches(interval, @"\d+").Select(s => int.Parse(s.Value)).ToArray();
 
-        // If number of time spans is not equal to number of units, throw exception.
+        // If number of time spans is not equal to number of units, inform about error - use default time
         if (units.Length != spans.Length)
         {
-            throw new ArgumentException("Invalid time provided - use XXsXXmXXhXXDXXMXXY notation.");
+            UserCLIService.CLIPrint("Invalid time provided - use XXsXXmXXhXXDXXMXXY notation.");
+            UserCLIService.CLIPrint("Using default time - 1hour");
+            return result + TimeSpan.FromHours(1);
         }
 
         for (int i = 0; i < units.Length; i++)
