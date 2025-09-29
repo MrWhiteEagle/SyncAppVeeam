@@ -1,5 +1,5 @@
 # SyncApp
-**SyncApp** is a directory synchronization program writen in C# language that performs a a comparison between two  directories' contents periodically, based on an interval, source and destination directories provided by the user.
+**SyncApp** is a directory synchronization program writen in C# language that performs a comparison between two directories' contents periodically, based on an interval, source and destination directories provided by the user.
 ## Features
 
  - Visual tree of both directories' contents, along with "out of sync" nodes
