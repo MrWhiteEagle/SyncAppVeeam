@@ -3,12 +3,14 @@
 ## Features
 
  - Visual tree of both directories' contents, along with "out of sync" nodes
- - Comparison of files based on MD5 hashing
+ - Comparison of files based on timestamp, file size, and MD5 hashing
  - User-provided interval, source and destination directories
  - CLI (Command Line Interface)
  - Extensive Logging of operations to both Console and a logfile (also provided by user)
+ - Simple ErrorHandler Class for handling criticxal - or non-critical errors
  - Copying of files and directories from source to destination
  - Deletion of files and directories present in destination but not in source
+ - Locking of program's timer to prevet overlapping synchronizations
 ## How to use
 ### Requirements
 
@@ -44,6 +46,7 @@ And logging the output to program's location
 SyncAppVeeam
      ├────── Program.cs
      ├────── Classes
+     |       ├── ExceptionHandler.cs
      │       ├── SyncManagerService.cs
      │       ├── SynchronizationService.cs
      │       ├── TimerService.cs
