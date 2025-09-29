@@ -7,10 +7,10 @@ public class Program
     {
         // Sample arguments
         string[] altargs = {
-            "--source", "C:\\Users\\MrWhiteEagle\\Documents\\VSPROJ\\SyncAppVeeam\\TestEnvSource",
-            "--path", "C:\\Users\\MrWhiteEagle\\Documents\\VSPROJ\\SyncAppVeeam\\TestEnvSync",
+            "--source", "C:\\Users\\MrWhiteEagle\\Desktop\\TestEnvSource",
+            "--path", "C:\\Users\\MrWhiteEagle\\Desktop\\TestEnvSync",
             "--interval", "30s",
-            "--log", ".\\SyncLog"
+            "--log", "C:\\Users\\MrWhiteEagle\\Desktop"
         };
 
         // Start capturing output

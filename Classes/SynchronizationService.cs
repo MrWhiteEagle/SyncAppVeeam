@@ -36,7 +36,7 @@ namespace SyncAppVeeam.Classes
             destinationDirs.AddRange(dest.Where(
                 x => x.content.Any(c => !c.IsSynced)));
 
-            if (sourceDirs.Count == 0 || destinationDirs.Count == 0)
+            if (sourceDirs.Count != 0 || destinationDirs.Count != 0)
             {
                 //Sync destination first - delete unmatched entries to avoid conflicts with same name files
                 foreach (var dir in destinationDirs)
@@ -54,6 +54,7 @@ namespace SyncAppVeeam.Classes
             {
                 UserCLIService.CLIPrint("Everything in sync...");
             }
+            UserCLIService.CLIPrint("Press q to quit.");
         }
 
         // 
