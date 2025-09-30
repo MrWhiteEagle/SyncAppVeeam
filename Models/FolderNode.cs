@@ -33,7 +33,7 @@ namespace SyncAppVeeam.Models
                     // If its a folder - its constructor recursively fetches its content, if its a file, creaste a filenode and add to the folders content
                     if (Directory.Exists(node))
                     {
-                        var dir = new FolderNode(node);
+                        var dir = new FolderNode(node, false, IsReplica);
                         entries.Add(dir);
                     }
                     else if (File.Exists(node))

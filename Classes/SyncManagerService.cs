@@ -18,8 +18,8 @@ namespace SyncAppVeeam.Classes
 
         public SyncManagerService(string source, string destination, TimeSpan interval)
         {
-            this._sourceRoot = source;
-            this._destinationRoot = destination;
+            this._sourceRoot = Path.GetFullPath(source).TrimEnd(Path.DirectorySeparatorChar);
+            this._destinationRoot = Path.GetFullPath(destination).TrimEnd(Path.DirectorySeparatorChar);
 
             //Start the timer - creation = first sync
             this._timerService = new TimerService(interval);
@@ -142,25 +142,26 @@ namespace SyncAppVeeam.Classes
 
         private void CheckFolder(FolderNode folder)
         {
+            //Check if directory exists in counterpart, if not - flag it
+            var relativePath = Path.GetRelativePath(folder.IsReplica ? _destinationRoot : _sourceRoot, folder.NodePath);
+            var counterpath = Path.GetFullPath(Path.Combine(folder.IsReplica ? _sourceRoot : _destinationRoot, relativePath));
+
+            if (!Directory.Exists(counterpath))
+            {
+                folder.IsSynced = false;
+            }
             //Look for any file nodes in directory
             foreach (var file in folder.content.OfType<FileNode>())
             {
                 CheckFile(file);
-            }
-
-            //Check if directory exists in counterpart, if not - flag it
-            var relativePath = Path.GetRelativePath(folder.IsReplica ? _destinationNode.NodePath : _sourceNode.NodePath, folder.NodePath);
-            if (!Directory.Exists(Path.Combine(folder.IsReplica ? _sourceNode.NodePath : _destinationNode.NodePath, relativePath)))
-            {
-                folder.IsSynced = false;
             }
         }
 
         private void CheckFile(FileNode file)
         {
             //Check if file exists in counterpart - if yes leave it, else flag
-            var relativePath = Path.GetRelativePath(file.IsReplica ? _destinationNode.NodePath : _sourceNode.NodePath, file.NodePath);
-            var counterPath = Path.Combine(file.IsReplica ? _sourceNode.NodePath : _destinationNode.NodePath, relativePath);
+            var relativePath = Path.GetRelativePath(file.IsReplica ? _destinationRoot : _sourceRoot, file.NodePath);
+            var counterPath = Path.GetFullPath(Path.Combine(file.IsReplica ? _sourceRoot : _destinationRoot, relativePath));
 
             //First check timestamp - if it matches, try to check size - if it matches then try to use MD5
             if (File.Exists(counterPath))

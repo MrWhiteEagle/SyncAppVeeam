@@ -7,10 +7,10 @@ public class Program
     {
         // Sample arguments
         string[] altargs = {
-            "--source", ".\\Source",
-            "--path", ".\\Replica",
-            "--interval", "30s",
-            "--log", ".\\SyncLog"
+            "--source", "./Source",
+            "--path", "./Replica",
+            "--interval", "30m",
+            "--log", "./SyncLog"
         };
 
         // Start capturing output
@@ -60,13 +60,13 @@ public class Program
             switch (args[i])
             {
                 case "--source":
-                    SourcePath = args[i + 1]; break;
+                    SourcePath = Path.GetFullPath(args[i + 1]); break;
                 case "--path":
-                    SyncPath = args[i + 1]; break;
+                    SyncPath = Path.GetFullPath(args[i + 1]); break;
                 case "--interval":
                     interval = ParseInterval(args[i + 1]); break;
                 case "--log":
-                    logPath = args[i + 1]; break;
+                    logPath = Path.GetFullPath(args[i + 1]); break;
 
             }
         }
