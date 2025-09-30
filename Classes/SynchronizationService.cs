@@ -87,8 +87,15 @@ namespace SyncAppVeeam.Classes
                 {
                     try
                     {
-                        Directory.Delete(node.NodePath, true);
-                        UserCLIService.CLIPrint($"Deleting {node.NodePath} in destination...");
+                        if (Directory.Exists(node.NodePath))
+                        {
+                            Directory.Delete(node.NodePath, true);
+                            UserCLIService.CLIPrint($"Deleting {node.NodePath} in destination...", UserCLIService.InfoType.DELETE);
+                        }
+                        else
+                        {
+                            UserCLIService.CLIPrint($"Directory {node.NodePath} was already deleted - skipping");
+                        }
 
                     }
                     catch (Exception ex)
@@ -127,8 +134,15 @@ namespace SyncAppVeeam.Classes
             {
                 try
                 {
-                    File.Delete(node.NodePath);
-                    UserCLIService.CLIPrint($"Deleting {node.NodePath} in destination...", UserCLIService.InfoType.DELETE);
+                    if (File.Exists(node.NodePath))
+                    {
+                        File.Delete(node.NodePath);
+                        UserCLIService.CLIPrint($"Deleting {node.NodePath} in destination...", UserCLIService.InfoType.DELETE);
+                    }
+                    else
+                    {
+                        UserCLIService.CLIPrint($"File {node.NodePath} was already deleted - skipping");
+                    }
 
                 }
                 catch (Exception ex)
