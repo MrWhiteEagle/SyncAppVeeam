@@ -7,10 +7,10 @@ public class Program
     {
         // Sample arguments
         string[] altargs = {
-            "--source", "C:\\Users\\MrWhiteEagle\\Desktop\\TestEnvSource",
-            "--path", "C:\\Users\\MrWhiteEagle\\Desktop\\TestEnvSync",
+            "--source", ".\\Source",
+            "--path", ".\\Replica",
             "--interval", "30s",
-            "--log", "C:\\Users\\MrWhiteEagle\\Desktop"
+            "--log", ".\\SyncLog"
         };
 
         // Start capturing output
@@ -43,7 +43,10 @@ public class Program
         if (args.Count() != 8)
         {
             //throw - cannot process arguments
-            ExceptionHandler.HandleException(new ArgumentException(), "Invalid arguments provided. Try --source <sourcepath> --path <destinationpath> --log <logdirectory> --interval <XXsXXmXXhXXDXXMXXY>", true);
+            ExceptionHandler.HandleException(
+                new ArgumentException("Invalid arguments provided. Try --source <sourcepath> --path <destinationpath> --log <logdirectory> --interval <XXsXXmXXhXXDXXMXXY>"),
+                "",
+                true);
         }
 
         string SourcePath = "/";
@@ -77,7 +80,6 @@ public class Program
     {
         TimeSpan result = TimeSpan.Zero;
 
-        // Process interval notation into arrays of time and units of time;
         // Units - using regex, allowing nothing but smhDMY - the notation characters (I also needed to add the whitespace check since it was returning spaces and empty strings
         var units = Regex.Split(interval, @"[^smhDMY]").Select(u => u).Where(u => !String.IsNullOrWhiteSpace(u) && !String.IsNullOrEmpty(u)).ToArray();
 

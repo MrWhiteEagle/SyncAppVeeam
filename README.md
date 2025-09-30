@@ -29,6 +29,7 @@ The program is used by launching it from any CLI (f.e. powershell or CMD) and pr
 		--interval <timeBetweenSyncAttempts> (Notation: xxsxxmxxhxxDxxMxxY)
 		--log <logDirectoryPath>
 #### Note - log path needs to be a directory, program creates a text file on each launch, and appends its contents on each sync.
+If noa arguments are provided, program will attempt to create two directories - "Source" and "Replica", create a logfile in the program's working directory and start the synchronization process in those directories on an interval of 1 hour by default.
 The program parses interval time with specific notation allowing user to combine total time without need of manual addition of units.
 #### Example: 
 		--interval 20s30m1h1D

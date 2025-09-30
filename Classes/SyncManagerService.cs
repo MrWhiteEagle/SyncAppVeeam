@@ -80,18 +80,37 @@ namespace SyncAppVeeam.Classes
         {
             FolderNode? result = null;
 
-            //Check if provided path is a dir
+            //Check if provided path is a dir, if not attempt to create it
             if (Directory.Exists(path))
             {
-                result = new FolderNode(path, true, replica);
+                try
+                {
+                    result = new FolderNode(path, true, replica);
+                }
+                catch
+                {
+                    //if cannot be accessed - exit
+                    //we cant continue here, because the paths are provided at start and not changed - therefore exit
+                    this.Dispose();
+                    ExceptionHandler.HandleException(new UnauthorizedAccessException($"Provided path: {path} to one of the root nodes could not be accessed"), "", true);
+                }
             }
-
-            //return result, if not a directory - throw
-            //we cant continue here, because the paths are provided at start and not changed - therefore throw and not try/catch
-            if (result == null)
+            else
             {
-                this.Dispose();
-                ExceptionHandler.HandleException(new DirectoryNotFoundException($"Provided path: {path} does not exist or is not a directory"), "", true);
+                try
+                {
+                    Directory.CreateDirectory(path);
+                    result = new FolderNode(path, true, replica);
+                }
+                catch
+                {
+                    ExceptionHandler.HandleException(new UnauthorizedAccessException($"Provided directory: {path} doesnt exist and could not be created"), "", true);
+                }
+            }
+            //If somehow previous chacks fail to notice result not returning or a path could not be aquired - end
+            if (result == null || result.NodePath == null)
+            {
+                ExceptionHandler.HandleException(new DirectoryNotFoundException($"Could not receive contents of provided directory {path}, or failed to create it, cannot continue."), "", true);
             }
             //Null checked above ^^^
             return result!;

@@ -46,12 +46,19 @@ namespace SyncAppVeeam.Classes
 
         public static void LogToFile()
         {
-            Directory.CreateDirectory(logDirPath);
-            using (var writer = File.AppendText(logFilePath))
+            try
             {
-                writer.Write(logbuilder.ToString());
+                Directory.CreateDirectory(logDirPath);
+                using (var writer = File.AppendText(logFilePath))
+                {
+                    writer.Write(logbuilder.ToString());
+                }
+                logbuilder.Clear();
             }
-            logbuilder.Clear();
+            catch (Exception ex)
+            {
+                ExceptionHandler.HandleException(ex, "Couldn't access logfile location, or create a directory thats supposed to contain it.");
+            }
         }
     }
 }
